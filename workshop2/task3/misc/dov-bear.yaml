@@ -17,6 +17,12 @@ spec:
       labels:
         name: dov-bear
     spec:
+      volumes:
+      - name: config-vol
+        configMap:
+          name: config-cm
+      - name: tmp-vol
+        emptyDir: {}
       containers:
       - name: dov-bear
         image: chukmunnlee/dov-bear-golang:0.1
@@ -36,6 +42,12 @@ spec:
           httpGet:
             path: /healthz
             port: 3000
+        volumeMounts:
+        - name: config-vol
+          mountPath: /app/config
+          readOnly: true
+        - name: tmp-vol
+          mountPath: /opt/tmp
 ---
 apiVersion: v1
 kind: Service
@@ -50,5 +62,5 @@ spec:
     name: dov-bear
   ports:
   - port: 3000
-  - targetPort: 3000
+    targetPort: 3000
 ---
