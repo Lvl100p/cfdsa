@@ -1,0 +1,54 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dov-bear
+  namespace: myns
+  labels:
+    name: dov-bear
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      name: dov-bear
+  template:
+    metadata:
+      name: dov-bear
+      labels:
+        name: dov-bear
+    spec:
+      containers:
+      - name: dov-bear
+        image: chukmunnlee/dov-bear-golang:0.1
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: INSTANCE_NAME
+          value: dov-bear
+        - name: INSTANCE_HASH
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: PORT
+          value: "3000"
+        ports:
+        - containerPort: 3000
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dov-bear
+  namespace: myns
+  labels:
+    name: dov-bear
+spec:
+  type: ClusterIP
+  selector:
+    name: dov-bear
+  ports:
+  - port: 3000
+  - targetPort: 3000
+---
