@@ -38,10 +38,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: oauth-svc
+  name: oauth2-svc
   namespace: cs
   labels:
-    name: oauth-svc
+    name: oauth2-svc
     app: codeserver
 spec:
   type: ClusterIP
