@@ -41,6 +41,7 @@ spec:
     kind: PersistentVolumeClaim
     metadata:
       name: data-vol
+      labels: data-vol
     spec:
       accessModes: [ "ReadWriteOnce" ]
       storageClassName: do-block-storage-xfs
@@ -60,6 +61,9 @@ spec:
         - /bin/sh
         - -c
         - "chown 1001 /data"
+        volumeMounts:
+        - name: data-vol
+          mountPath: /data
       containers:
       - name: minio-container
         image: bitnami/minio:latest
