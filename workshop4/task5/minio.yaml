@@ -1,0 +1,144 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: minio
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-hsvc
+  namespace: minio
+  labels:
+    name: minio-hsvc
+spec:
+  clusterIP: None
+  selector:
+    name: minio-po
+  ports:
+  - name: minio-data
+    port: 9000
+    targetPort: 9000
+  - name: minio-console
+    port: 9090
+    targetPort: 9090
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minio-sts
+  namespace: minio
+  labels:
+    name: minio-sts
+spec:
+  replicas: 4
+  serviceName: minio-hsvc
+  selector:
+    matchLabels:
+      name: minio-po
+  volumeClaimTemplates:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: data-vol
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: do-block-storage-xfs
+      resources:
+        requests:
+          storage: 1Gi
+  template:
+    metadata:
+      name: minio-po
+      labels:
+        name: minio-po
+    spec:
+      initContainers:
+      - name: minio-init-container
+        image: busybox
+        command:
+        - /bin/sh
+        - -c
+        - "chown 1001 /data"
+      containers:
+      - name: minio-container
+        image: bitnami/minio:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - minio
+        - server
+        - --address=:9000
+        - --console-address=:9090
+        - http://minio-sts-{0...3}.minio-hsvc.minio.svc.cluster.local/data
+        env:
+        - name: MINIO_ROOT_USER
+          value: root
+        - name: MINIO_ROOT_PASSWORD
+          value: password123
+        ports:
+        - containerPort: 9000
+        - containerPort: 9090
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /minio/health/ready
+            port: 9000
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /minio/health/live
+            port: 9000
+        volumeMounts:
+        - name: data-vol
+          mountPath: /data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-svc
+  labels:
+    name: minio-svc
+  namespace: minio
+spec:
+  type: ClusterIP
+  selector:
+    name: minio-po
+  ports:
+  - name: data
+    port: 9000
+    targetPort: 9000
+  - name: console
+    port: 9090
+    targetPort: 9090
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minio-ing
+  namespace: minio
+  labels:
+    name: minio-ing
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: data-167.99.29.64.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: minio-svc
+            port:
+              number: 9000
+  - host: console-167.99.29.64.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: minio-svc
+            port:
+              number: 9090
+---
